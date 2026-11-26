@@ -2,123 +2,83 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Тест лобби</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      background: #121520;
-      color: #f3f4f6;
-      max-width: 460px;
-      margin: 40px auto;
-      padding: 0 16px;
-    }
-    input, button {
-      padding: 8px 12px;
-      margin: 6px 0;
-      font-size: 15px;
-    }
-    button {
-      cursor: pointer;
-    }
-    .box {
-      background: #1e2436;
-      padding: 16px;
-      border-radius: 8px;
-      margin-top: 12px;
-    }
-    .error {
-      color: #ff6b6b;
-      min-height: 20px;
-      margin-top: 8px;
-    }
-    .hidden {
-      display: none;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPACE CREW — Лобби</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h2>Тест главного экрана и лобби</h2>
+  <div class="stars"></div>
 
-  <div id="menuScreen" class="box">
-    <div>
-      <label>Никнейм:</label><br />
-      <input id="nicknameInput" type="text" placeholder="Например, Alikhan" />
-    </div>
+  <main class="app">
+    <header class="brand">
+      <div class="badge">SECTOR 09 • PRE-FLIGHT</div>
+      <h1>SPACE CREW</h1>
+      <p class="subtitle">Собери экипаж, проверь код доступа и приготовься к вылету</p>
+    </header>
 
-    <button id="createBtn">Создать лобби</button>
+    <section id="menuScreen" class="card">
+      <div class="field">
+        <label for="nicknameInput">Позывной (никнейм)</label>
+        <input
+          id="nicknameInput"
+          type="text"
+          maxlength="16"
+          placeholder="Например, RedVanguard"
+          autocomplete="off"
+        />
+      </div>
 
-    <hr />
+      <div class="field">
+        <label>Цвет скафандра</label>
+        <div id="colorPicker" class="colors"></div>
+      </div>
 
-    <div>
-      <label>Код лобби:</label><br />
-      <input id="roomCodeInput" type="text" placeholder="Например, A7K2" maxlength="6" />
-      <button id="joinBtn">Войти по коду</button>
-    </div>
+      <button id="createBtn" class="btn btn-primary">Создать лобби</button>
 
-    <div id="errorBox" class="error"></div>
-  </div>
+      <div class="divider"><span>или войти по коду</span></div>
 
-  <div id="lobbyScreen" class="box hidden">
-    <h3>Комната: <span id="currentCode"></span></h3>
-    <p id="hostBadge"></p>
-    <h4>Игроки в лобби:</h4>
-    <ul id="playersList"></ul>
-  </div>
+      <div class="join-row">
+        <input
+          id="roomCodeInput"
+          type="text"
+          maxlength="6"
+          placeholder="КОД (А7К2)"
+          autocomplete="off"
+        />
+        <button id="joinBtn" class="btn btn-secondary">Войти</button>
+      </div>
+
+      <div id="errorBox" class="error" role="alert"></div>
+    </section>
+
+    <section id="lobbyScreen" class="card hidden">
+      <div class="lobby-top">
+        <div>
+          <span class="label-muted">КОД КОМНАТЫ</span>
+          <div class="code-row">
+            <strong id="currentCode" class="room-code">----</strong>
+            <button id="copyCodeBtn" class="btn-chip" type="button">Копировать</button>
+          </div>
+        </div>
+        <button id="leaveBtn" class="btn btn-ghost" type="button">Выйти</button>
+      </div>
+
+      <p id="hostBadge" class="status-pill"></p>
+
+      <div class="players-header">
+        <span>Экипаж</span>
+        <span id="playersCount">0 / 10</span>
+      </div>
+
+      <ul id="playersList" class="players-list"></ul>
+
+      <button id="startBtn" class="btn btn-primary hidden" type="button">
+        Начать миссию
+      </button>
+    </section>
+  </main>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-
-    const menuScreen = document.getElementById('menuScreen');
-    const lobbyScreen = document.getElementById('lobbyScreen');
-    const nicknameInput = document.getElementById('nicknameInput');
-    const roomCodeInput = document.getElementById('roomCodeInput');
-    const createBtn = document.getElementById('createBtn');
-    const joinBtn = document.getElementById('joinBtn');
-    const errorBox = document.getElementById('errorBox');
-    const currentCode = document.getElementById('currentCode');
-    const hostBadge = document.getElementById('hostBadge');
-    const playersList = document.getElementById('playersList');
-
-    function showError(msg) {
-      errorBox.textContent = msg || '';
-    }
-
-    function renderPlayers(players) {
-      playersList.innerHTML = '';
-      players.forEach((p) => {
-        const li = document.createElement('li');
-        li.textContent = p.nickname;
-        playersList.appendChild(li);
-      });
-    }
-
-    function enterLobby({ roomCode, players, isHost }) {
-      showError('');
-      menuScreen.classList.add('hidden');
-      lobbyScreen.classList.remove('hidden');
-      currentCode.textContent = roomCode;
-      hostBadge.textContent = isHost ? 'Вы хост комнаты' : 'Вы участник комнаты';
-      renderPlayers(players);
-    }
-
-    createBtn.addEventListener('click', () => {
-      socket.emit('create_lobby', { nickname: nicknameInput.value });
-    });
-
-    joinBtn.addEventListener('click', () => {
-      socket.emit('join_lobby', {
-        nickname: nicknameInput.value,
-        roomCode: roomCodeInput.value
-      });
-    });
-
-    socket.on('lobby_joined', enterLobby);
-    socket.on('update_players', renderPlayers);
-    socket.on('host_changed', ({ isHost }) => {
-      if (isHost) hostBadge.textContent = 'Вы хост комнаты';
-    });
-    socket.on('error_message', showError);
-  </script>
+  <script src="client.js"></script>
 </body>
 </html>
